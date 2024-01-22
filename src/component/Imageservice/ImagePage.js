@@ -2,13 +2,13 @@ import React, { useState } from 'react';
 import axios from 'axios';
 
 const ImagePage = () => {
-    const [file, setFile] = useState(null);
+    const [files, setFiles] = useState([]);
     const [width, setWidth] = useState('');
     const [height, setHeight] = useState('');
     const [error, setError] = useState('');
 
     const handleFileChange = (event) => {
-        setFile(event.target.files[0]);
+        setFiles([...files, ...Array.from(event.target.files)]);
     };
 
     const handleWidthChange = (event) => {
@@ -19,19 +19,30 @@ const ImagePage = () => {
         setHeight(event.target.value);
     };
 
+    const handleRemoveFile = (index) => {
+        const updatedFiles = files.filter((_, fileIndex) => fileIndex !== index);
+        setFiles(updatedFiles);
+    };
+
     const handleSubmit = async () => {
-        if (!file || !width || !height) {
+        if (files.length === 0 || !width || !height) {
             setError('파일과 너비, 높이를 모두 입력해주세요.');
             return;
         }
 
         const formData = new FormData();
-        formData.append('file', file);
+        files.forEach(file => {
+            formData.append('files', file);
+        });
         formData.append('width', width);
         formData.append('height', height);
 
         try {
-            const response = await axios.post('http://localhost:8090/image/resize', formData);
+            const response = await axios.post('http://localhost:8090/image/resize', formData, {
+                headers: {
+                    'Content-Type': 'multipart/form-data'
+                }
+            });
             console.log('이미지 조정 성공:', response.data);
             // 성공 처리 로직
         } catch (error) {
@@ -44,10 +55,32 @@ const ImagePage = () => {
     return (
         <div>
             <h1>이미지 페이지</h1>
-            <input type="file" onChange={handleFileChange} accept=".jpg, .jpeg" />
+            <input type="file" multiple onChange={handleFileChange} accept=".jpg, .jpeg" />
             <div>
-                <input type="number" value={width} onChange={handleWidthChange} placeholder="너비" />
-                <input type="number" value={height} onChange={handleHeightChange} placeholder="높이" />
+                {files.map((file, index) => (
+                    <div key={index}>
+                        {file.name}
+                        <button onClick={() => handleRemoveFile(index)}>X</button>
+                    </div>
+                ))}
+            </div>
+            <div>
+                <input 
+                    type="number" 
+                    value={width} 
+                    onChange={handleWidthChange} 
+                    placeholder="너비" 
+                    min="1" 
+                    max="5000"
+                />
+                <input 
+                    type="number" 
+                    value={height} 
+                    onChange={handleHeightChange} 
+                    placeholder="높이" 
+                    min="1" 
+                    max="5000"
+                />
             </div>
             <button onClick={handleSubmit}>이미지 업로드</button>
             {error && <p style={{ color: 'red' }}>{error}</p>}
